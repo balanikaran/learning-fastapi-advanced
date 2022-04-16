@@ -60,6 +60,7 @@ staticUserDb = [
 class User(BaseModel):
     firstname: str
     username: str
+    lastname: Optional[str]
 
 
 @app.get("/users")
@@ -126,4 +127,24 @@ async def deleteUser(id: int):
 def checkDbConnection(db: Session = Depends(getDatabase)):
     return {
         "status": "success!!!"
+    }
+
+
+@app.get("/usersDb")
+async def getAllUsersDb(db: Session = Depends(getDatabase)):
+    users = db.query(models.Users).all()
+    return {
+        "users": users
+    }
+
+
+@app.post("/usersDb")
+async def createUserDb(user: User, db: Session = Depends(getDatabase)):
+    new_user = models.Users(firstname=user.firstname, lastname=user.lastname, username=user.username)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {
+        "message": "user created!!!",
+        "user": new_user
     }
