@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import List
 from fastapi import Body, Depends, FastAPI, HTTPException, status, Response
-from pydantic import BaseModel
+from . import schemas
 from . import models
 from .database import engine, getDatabase
 from sqlalchemy.orm import Session
@@ -26,17 +26,9 @@ async def createPost(requestPayload: dict = Body(...)):
     }
 
 
-# Request payload body
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True  # default value
-    rating: Optional[int] = None  # fully optional value default Null
-
-
 # request payload with basemodel
 @app.post("/createPostWithModel")
-async def createPostWithModel(requestPayload: Post):
+async def createPostWithModel(requestPayload: schemas.Post):
     print(requestPayload.dict())
     return {
         "message": "Your post was created with Model!",
@@ -55,12 +47,6 @@ staticUserDb = [
         "username": "balani"
     }
 ]
-
-
-class User(BaseModel):
-    firstname: str
-    username: str
-    lastname: Optional[str]
 
 
 @app.get("/users")
@@ -85,7 +71,7 @@ async def getAllUsersHttpException():
 
 
 @app.post("/users", status_code=status.HTTP_201_CREATED)
-async def createUser(user: User):
+async def createUser(user: schemas.UserCreate):
     staticUserDb.append(user.dict())
     return {
         "data": user.dict()
@@ -98,7 +84,7 @@ async def getUser(id: int):
 
 
 @app.put("/users/{id}")
-async def updateUser(id: int, user: User):
+async def updateUser(id: int, user: schemas.UserUpdate):
     print(f"id: {id}, user: {user.dict()}")
     return {
         "data": "user updated!!!"
@@ -130,36 +116,42 @@ def checkDbConnection(db: Session = Depends(getDatabase)):
     }
 
 
-@app.get("/usersDb")
+@app.get("/usersDb", response_model=List[schemas.User])
 async def getAllUsersDb(db: Session = Depends(getDatabase)):
     users = db.query(models.Users).all()
-    return {
-        "users": users
-    }
+    # return {
+    #     "users": users
+    # }
+    return users
 
 
-@app.post("/usersDb", status_code=status.HTTP_201_CREATED)
-async def createUserDb(user: User, db: Session = Depends(getDatabase)):
+@app.post("/usersDb", status_code=status.HTTP_201_CREATED, response_model=schemas.User)
+async def createUserDb(user: schemas.UserCreate, db: Session = Depends(getDatabase)):
     new_user = models.Users(**user.dict())
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {
-        "message": "user created!!!",
-        "user": new_user
-    }
+
+    # return {
+    #     "message": "user created!!!",
+    #     "user": new_user
+    # }
+
+    return new_user
 
 
-@app.get("/usersDb/{id}")
+@app.get("/usersDb/{id}", response_model=schemas.User)
 async def getUserDb(id: int, db: Session = Depends(getDatabase)):
     user = db.query(models.Users).filter(models.Users.id == id).first()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user for id: {} not found!!!".format(id))
 
-    return {
-        "user": user
-    }
+    # return {
+    #     "user": user
+    # }
+
+    return user
 
 
 @app.delete("/usersDb/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -175,8 +167,8 @@ async def deleteUserDb(id: int, db: Session = Depends(getDatabase)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/usersDb/{id}")
-async def updateUserDb(id: int, user: User, db: Session = Depends(getDatabase)):
+@app.put("/usersDb/{id}", response_model=schemas.User)
+async def updateUserDb(id: int, user: schemas.UserUpdate, db: Session = Depends(getDatabase)):
     user_query = db.query(models.Users).filter(models.Users.id == id)
 
     if not user_query.first():
@@ -185,7 +177,9 @@ async def updateUserDb(id: int, user: User, db: Session = Depends(getDatabase)):
     user_query.update(user.dict(), synchronize_session=False)
     db.commit()
 
-    return {
-        "message": "user updated!!!",
-        "user": user_query.first()
-    }
+    # return {
+    #     "message": "user updated!!!",
+    #     "user": user_query.first()
+    # }
+
+    return user_query.first()
