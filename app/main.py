@@ -138,13 +138,54 @@ async def getAllUsersDb(db: Session = Depends(getDatabase)):
     }
 
 
-@app.post("/usersDb")
+@app.post("/usersDb", status_code=status.HTTP_201_CREATED)
 async def createUserDb(user: User, db: Session = Depends(getDatabase)):
-    new_user = models.Users(firstname=user.firstname, lastname=user.lastname, username=user.username)
+    new_user = models.Users(**user.dict())
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {
         "message": "user created!!!",
         "user": new_user
+    }
+
+
+@app.get("/usersDb/{id}")
+async def getUserDb(id: int, db: Session = Depends(getDatabase)):
+    user = db.query(models.Users).filter(models.Users.id == id).first()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user for id: {} not found!!!".format(id))
+
+    return {
+        "user": user
+    }
+
+
+@app.delete("/usersDb/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deleteUserDb(id: int, db: Session = Depends(getDatabase)):
+    user = db.query(models.Users).filter(models.Users.id == id)
+
+    if not user.first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user with id: {} not found".format(id))
+
+    user.delete(synchronize_session=False)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.put("/usersDb/{id}")
+async def updateUserDb(id: int, user: User, db: Session = Depends(getDatabase)):
+    user_query = db.query(models.Users).filter(models.Users.id == id)
+
+    if not user_query.first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user with id: {} not found".format(id))
+
+    user_query.update(user.dict(), synchronize_session=False)
+    db.commit()
+
+    return {
+        "message": "user updated!!!",
+        "user": user_query.first()
     }
