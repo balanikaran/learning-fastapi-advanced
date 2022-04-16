@@ -1,6 +1,11 @@
 from typing import Optional
-from fastapi import Body, FastAPI, HTTPException, status, Response
+from fastapi import Body, Depends, FastAPI, HTTPException, status, Response
 from pydantic import BaseModel
+from . import models
+from .database import engine, getDatabase
+from sqlalchemy.orm import Session
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -114,3 +119,11 @@ async def deleteUser(id: int):
     # }
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# SQL Alchemy <-> Database CRUD
+@app.get("/checkDbConnection")
+def checkDbConnection(db: Session = Depends(getDatabase)):
+    return {
+        "status": "success!!!"
+    }
