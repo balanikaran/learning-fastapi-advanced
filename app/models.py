@@ -10,5 +10,4 @@ class Users(Base):
     lastname = Column(String, nullable=True)
     username = Column(String, nullable=False)
 
-    published = Column(Boolean, default=True, nullable=False)
-    
+    published = Column(Boolean, server_default='TRUE', nullable=False)
